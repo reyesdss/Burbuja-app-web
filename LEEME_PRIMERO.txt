@@ -1,0 +1,32 @@
+BURBUJA v9 · Multi-Burbuja + Chat + Estados
+
+Repositorio completo reorganizado por carpetas.
+
+#Estructura
+
+- `index.html` — entrada mínima que abre `/burbuja/`
+- `burbuja/` — app principal, chat, estados, perfiles, juegos de pareja
+- `burbujacraft/` — BURBUJACRAFT v8 móvil + aislamiento por Burbuja
+- `burbuja-hambrienta/` — Burbuja Hambrienta + aislamiento por Burbuja
+- `firestore.rules` — reglas para publicar manualmente en Firebase Console
+
+#Esta es la única gran reorganización
+
+Para instalarla, reemplaza el contenido del repositorio por todo el contenido de este ZIP. NO borres el proyecto Firebase, Authentication ni Firestore. Después copia `firestore.rules` en Firebase Console > Firestore Database > Reglas y pulsa Publicar.
+
+A partir de aquí:
+- cambios de chat/app: reemplazar solo `burbuja/`
+- cambios de Craft: reemplazar solo `burbujacraft/`
+- cambios de Hambrienta: reemplazar solo `burbuja-hambrienta/`
+
+#Datos anteriores
+La migración Multi-Burbuja conserva la lógica de Fase 1 y copia los datos antiguos a `legacy-main-v1`. No borres las colecciones viejas hasta comprobar que tus dos cuentas y mensajes aparecen correctamente.
+
+#Chat v9
+Incluye respuestas, deslizar para responder, reacciones, copiar, editar, eliminar para ti/ambos, fijar mensajes, fechas, visto/entregado, búsqueda, ir a fecha cargada, carga de mensajes antiguos, borradores, fotos múltiples con texto, visor, stickers de frases y monitos originales, favoritos/recientes, fondos de chat y adaptación móvil.
+
+#Estados 24 h
+Foto o texto, vista a pantalla completa, visto, reacciones y respuesta al chat. Se ocultan al vencer y los clientes intentan borrar los documentos expirados; las reglas permiten limpiar estados vencidos.
+
+#Importante
+No hay notificaciones push.

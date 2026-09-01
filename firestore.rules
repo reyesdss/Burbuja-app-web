@@ -1,0 +1,198 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function legacySlotIs(uid) {
+      return (exists(/databases/$(database)/documents/slots/one)
+              && get(/databases/$(database)/documents/slots/one).data.uid == uid)
+          || (exists(/databases/$(database)/documents/slots/two)
+              && get(/databases/$(database)/documents/slots/two).data.uid == uid);
+    }
+    function legacyMember() { return signedIn() && legacySlotIs(request.auth.uid); }
+
+    function bubbleExists(bubbleId) {
+      return exists(/databases/$(database)/documents/bubbles/$(bubbleId));
+    }
+    function isBubbleMember(bubbleId) {
+      return signedIn() && bubbleExists(bubbleId)
+        && request.auth.uid in get(/databases/$(database)/documents/bubbles/$(bubbleId)).data.memberIds;
+    }
+    function isBubbleMemberAfter(bubbleId) {
+      return signedIn()
+        && request.auth.uid in getAfter(/databases/$(database)/documents/bubbles/$(bubbleId)).data.memberIds;
+    }
+    function validNormalBubbleCreate() {
+      return signedIn()
+        && request.resource.data.memberIds.size() == 1
+        && request.resource.data.memberIds[0] == request.auth.uid
+        && request.resource.data.memberCount == 1
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.inviteCode is string;
+    }
+    function validInviteJoin(bubbleId) {
+      return signedIn()
+        && !(request.auth.uid in resource.data.memberIds)
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && request.resource.data.memberIds.size() <= 2
+        && request.resource.data.memberCount == request.resource.data.memberIds.size()
+        && request.resource.data.inviteCode == resource.data.inviteCode
+        && exists(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode))
+        && get(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode)).data.active == true
+        && get(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode)).data.bubbleId == bubbleId;
+    }
+    function validLegacyJoin(bubbleId) {
+      return bubbleId == "legacy-main-v1"
+        && legacyMember()
+        && !(request.auth.uid in resource.data.memberIds)
+        && request.auth.uid in request.resource.data.memberIds
+        && request.resource.data.memberIds.hasAll(resource.data.memberIds)
+        && request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1
+        && request.resource.data.memberIds.size() <= 2;
+    }
+
+    /* Inicio de sesión por nombre de usuario. */
+    match /aliases/{handle} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      allow update: if false;
+    }
+
+    /* Perfil de cuenta. Los perfiles de pareja viven además dentro de cada Burbuja. */
+    match /profiles/{uid} {
+      allow read: if signedIn() && (uid == request.auth.uid || (legacyMember() && legacySlotIs(uid)));
+      allow create: if signedIn() && uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && uid == request.auth.uid && resource.data.uid == request.auth.uid;
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read, create, update: if signedIn() && uid == request.auth.uid;
+      allow delete: if false;
+      match /memberships/{bubbleId} {
+        allow read: if signedIn() && uid == request.auth.uid;
+        allow create, update: if signedIn() && uid == request.auth.uid && isBubbleMemberAfter(bubbleId);
+        allow delete: if signedIn() && uid == request.auth.uid;
+      }
+    }
+
+    match /inviteCodes/{code} {
+      allow get: if signedIn();
+      allow list: if false;
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.active == true
+        && isBubbleMemberAfter(request.resource.data.bubbleId);
+      allow update, delete: if signedIn()
+        && resource.data.createdBy == request.auth.uid
+        && isBubbleMember(resource.data.bubbleId);
+    }
+
+    match /bubbles/{bubbleId} {
+      /* An invite code is effectively the key needed to inspect/join an open Bubble. */
+      allow get: if (bubbleId == "legacy-main-v1" && legacyMember())
+        || isBubbleMember(bubbleId)
+        || (signedIn()
+            && resource.data.inviteCode is string
+            && exists(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode))
+            && get(/databases/$(database)/documents/inviteCodes/$(resource.data.inviteCode)).data.active == true);
+      allow list: if false;
+      allow create: if validNormalBubbleCreate();
+      allow update: if (isBubbleMember(bubbleId)
+            && request.resource.data.memberIds == resource.data.memberIds
+            && request.resource.data.inviteCode == resource.data.inviteCode
+            && request.resource.data.createdBy == resource.data.createdBy)
+        || validInviteJoin(bubbleId)
+        || validLegacyJoin(bubbleId);
+      allow delete: if false;
+
+      match /members/{uid} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create, update: if (signedIn() && uid == request.auth.uid && isBubbleMemberAfter(bubbleId))
+          || (bubbleId == "legacy-main-v1" && legacyMember() && legacySlotIs(uid) && isBubbleMemberAfter(bubbleId));
+        allow delete: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create: if (isBubbleMember(bubbleId) && request.resource.data.senderId == request.auth.uid)
+          || (bubbleId == "legacy-main-v1" && legacyMember()
+              && exists(/databases/$(database)/documents/messages/$(messageId))
+              && request.resource.data.senderId == get(/databases/$(database)/documents/messages/$(messageId)).data.senderId);
+        allow update: if isBubbleMember(bubbleId)
+          && request.resource.data.senderId == resource.data.senderId
+          && (resource.data.senderId == request.auth.uid
+              || request.resource.data.diff(resource.data).affectedKeys().hasOnly(["reactions", "hiddenBy"]));
+        allow delete: if isBubbleMember(bubbleId) && resource.data.senderId == request.auth.uid;
+      }
+
+      match /statuses/{statusId} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create: if isBubbleMember(bubbleId)
+          && request.resource.data.ownerUid == request.auth.uid;
+        allow update: if isBubbleMember(bubbleId)
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.expiresAt == resource.data.expiresAt
+          && (resource.data.ownerUid == request.auth.uid
+              || request.resource.data.diff(resource.data).affectedKeys().hasOnly(["viewedBy", "reactions"]));
+        allow delete: if isBubbleMember(bubbleId)
+          && (resource.data.ownerUid == request.auth.uid || resource.data.expiresAt < request.time);
+      }
+
+            match /presence/{uid} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create, update: if isBubbleMember(bubbleId) && uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if false;
+      }
+
+      match /typing/{uid} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create, update: if isBubbleMember(bubbleId) && uid == request.auth.uid && request.resource.data.uid == request.auth.uid;
+        allow delete: if false;
+      }
+
+      match /nudges/{nudgeId} {
+        allow read: if isBubbleMember(bubbleId);
+        allow create: if (isBubbleMember(bubbleId)
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.targetId != request.auth.uid)
+          || (bubbleId == "legacy-main-v1" && legacyMember()
+              && exists(/databases/$(database)/documents/nudges/$(nudgeId))
+              && request.resource.data.senderId == get(/databases/$(database)/documents/nudges/$(nudgeId)).data.senderId);
+        allow update, delete: if false;
+      }
+
+      match /shared/{docId} {
+        allow read, create, update: if isBubbleMember(bubbleId);
+        allow delete: if false;
+      }
+
+      match /games/{gameId} {
+        allow read, create, update: if isBubbleMember(bubbleId);
+        allow delete: if false;
+      }
+    }
+
+    /* Solo los dos usuarios originales pueden leer la estructura anterior para la migración. */
+    match /slots/{slotId} {
+      allow get: if signedIn() && resource.data.uid == request.auth.uid;
+      allow list, create, update, delete: if false;
+    }
+    match /messages/{messageId} { allow read: if legacyMember(); allow write: if false; }
+    match /presence/{uid} { allow read: if legacyMember(); allow write: if false; }
+    match /typing/{uid} { allow read: if legacyMember(); allow write: if false; }
+    match /nudges/{nudgeId} { allow read: if legacyMember(); allow write: if false; }
+    match /shared/{docId} { allow read: if legacyMember(); allow write: if false; }
+    match /games/{gameId} { allow read: if legacyMember(); allow write: if false; }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}
