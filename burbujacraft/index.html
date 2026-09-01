@@ -129,7 +129,19 @@
       <div class="tabs"><button class="tab active" data-tab="inventory">OBJETOS</button><button class="tab" data-tab="craft">CRAFTEO</button><button class="tab" data-tab="achievements">LOGROS</button></div>
       <div id="inventoryTab" class="tab-page active">
         <div id="inventoryGrid" class="inventory-grid"></div>
-        <div id="selectedInfo" class="selected-info"><div id="selectedIcon" class="selected-icon"></div><div><b id="selectedName">Selecciona un objeto</b><p id="selectedDesc">Toca un objeto para ver sus opciones.</p></div><div class="selected-actions"><button id="equipBtn" class="small-btn">EQUIPAR</button><button id="eatBtn" class="small-btn">USAR</button><button id="deleteItemBtn" class="small-btn danger-small">ELIMINAR</button></div></div>
+        <div id="selectedInfo" class="selected-info">
+          <div id="selectedIcon" class="selected-icon"></div>
+          <div class="selected-copy"><b id="selectedName">Selecciona un objeto</b><p id="selectedDesc">Toca un objeto para ver sus opciones.</p></div>
+          <div id="equipSlotArea" class="equip-slot-area">
+            <small>ESPACIO DE LA BARRA</small>
+            <div id="equipSlotPicker" class="equip-slot-picker"></div>
+          </div>
+          <div class="selected-actions">
+            <button id="equipBtn" class="small-btn equip-main">EQUIPAR</button>
+            <button id="eatBtn" class="small-btn">USAR</button>
+            <button id="deleteItemBtn" class="small-btn danger-small">ELIMINAR</button>
+          </div>
+        </div>
       </div>
       <div id="craftTab" class="tab-page">
         <div id="craftContext" class="craft-context"></div>

@@ -20,7 +20,7 @@ const ui={
  menuPoints:$("menuPoints"),menuDays:$("menuDays"),menuTier:$("menuTier"),continueBtn:$("continueBtn"),continueInfo:$("continueInfo"),menuStatus:$("menuStatus"),
  mode:$("modeLabel"),day:$("dayLabel"),world:$("worldLabel"),time:$("timeLabel"),clock:$("clockFill"),points:$("burbujaPointsEl"),
  health:$("healthBar"),healthText:$("healthText"),hunger:$("hungerBar"),hungerText:$("hungerText"),partnerCard:$("partnerCard"),partnerName:$("partnerName"),partnerDistance:$("partnerDistance"),
- hint:$("contextHint"),toast:$("questToast"),hotbar:$("hotbar"),inventoryGrid:$("inventoryGrid"),selectedIcon:$("selectedIcon"),selectedName:$("selectedName"),selectedDesc:$("selectedDesc"),equipBtn:$("equipBtn"),eatBtn:$("eatBtn"),deleteItemBtn:$("deleteItemBtn"),
+ hint:$("contextHint"),toast:$("questToast"),hotbar:$("hotbar"),inventoryGrid:$("inventoryGrid"),selectedIcon:$("selectedIcon"),selectedName:$("selectedName"),selectedDesc:$("selectedDesc"),equipBtn:$("equipBtn"),eatBtn:$("eatBtn"),deleteItemBtn:$("deleteItemBtn"),equipSlotArea:$("equipSlotArea"),equipSlotPicker:$("equipSlotPicker"),
  recipeGrid:$("recipeGrid"),craftContext:$("craftContext"),craftCategories:$("craftCategories"),craftDetail:$("craftDetail"),achievementsGrid:$("achievementsGrid"),furnaceRecipes:$("furnaceRecipes"),chestInventoryGrid:$("chestInventoryGrid"),chestGrid:$("chestGrid"),
  waypointHud:$("waypointHud"),waypointIcon:$("waypointIcon"),waypointName:$("waypointName"),waypointDistance:$("waypointDistance"),waypointArrow:$("waypointArrow"),mapMarkers:$("mapMarkers")
 };
@@ -772,7 +772,7 @@ function updateHotbar(){
  state.hotbar.forEach((id,i)=>{
    const b=document.createElement("button");b.className="hot-slot"+(i===selectedSlot?" selected":"");const count=id?(state.inventory[id]||0):0;
    b.innerHTML=`<span class="slot-key">${i+1}</span>${id?`<span class="item-icon">${ITEM[id]?.icon||"?"}</span><span class="item-count">${count}</span>`:""}`;
-   b.onclick=()=>{selectedSlot=i;updateHotbar();updateHud()};ui.hotbar.appendChild(b)
+   b.onclick=()=>{selectedSlot=i;updateHotbar();renderEquipSlotPicker();updateHud()};ui.hotbar.appendChild(b)
  });
  const pb=$("placeBtn");if(pb)pb.classList.toggle("disabled",!selectedDef()?.place)
 }
@@ -792,17 +792,61 @@ function deleteInventoryItem(id){
  delete state.inventory[id];state.hotbar=state.hotbar.map(v=>v===id?null:v);if(state.armor===id)state.armor=null;
  selectedInventoryItem=null;updateHotbar();renderInventory();renderRecipes();toast("Objeto eliminado.",650)
 }
+function renderEquipSlotPicker(){
+ if(!ui.equipSlotPicker)return;
+ ui.equipSlotPicker.textContent="";
+ for(let i=0;i<9;i++){
+   const b=document.createElement("button");
+   b.type="button";
+   b.className="equip-slot-choice"+(i===selectedSlot?" active":"");
+   const id=state.hotbar[i];
+   b.textContent=id?(ITEM[id]?.icon||String(i+1)):String(i+1);
+   b.title=id?`${i+1}: ${ITEM[id]?.name||id}`:`Espacio ${i+1}`;
+   b.onclick=()=>{
+     selectedSlot=i;
+     updateHotbar();
+     renderEquipSlotPicker();
+     if(ui.equipBtn&&selectedInventoryItem)ui.equipBtn.textContent=`EQUIPAR EN ${selectedSlot+1}`;
+   };
+   ui.equipSlotPicker.appendChild(b);
+ }
+}
+
 function renderInventorySelection(){
  const id=selectedInventoryItem,it=ITEM[id];
+ renderEquipSlotPicker();
+
  if(!it||!(state.inventory[id]>0)){
-   ui.selectedIcon.textContent="";ui.selectedName.textContent="Selecciona un objeto";ui.selectedDesc.textContent="Toca un objeto para ver sus opciones.";
-   ui.equipBtn.style.display="none";ui.eatBtn.style.display="none";ui.deleteItemBtn.style.display="none";return
+   ui.selectedIcon.textContent="";
+   ui.selectedName.textContent="Selecciona un objeto";
+   ui.selectedDesc.textContent="Toca un objeto. Aquí abajo aparecerán EQUIPAR, USAR y ELIMINAR.";
+   ui.equipBtn.style.display="none";
+   ui.eatBtn.style.display="none";
+   ui.deleteItemBtn.style.display="none";
+   if(ui.equipSlotArea)ui.equipSlotArea.style.opacity=".45";
+   return
  }
- ui.selectedIcon.textContent=it.icon;ui.selectedName.textContent=`${it.name} ×${state.inventory[id]}`;ui.selectedDesc.textContent=it.desc;
- ui.equipBtn.style.display="block";ui.equipBtn.onclick=()=>{state.hotbar[selectedSlot]=id;updateHotbar();toast(`Equipado en espacio ${selectedSlot+1}.`,700)};
+
+ if(ui.equipSlotArea)ui.equipSlotArea.style.opacity="1";
+ ui.selectedIcon.textContent=it.icon;
+ ui.selectedName.textContent=`${it.name} ×${state.inventory[id]}`;
+ ui.selectedDesc.textContent=it.desc;
+
+ ui.equipBtn.style.display="block";
+ ui.equipBtn.textContent=`EQUIPAR EN ${selectedSlot+1}`;
+ ui.equipBtn.onclick=()=>{
+   state.hotbar[selectedSlot]=id;
+   updateHotbar();
+   renderEquipSlotPicker();
+   toast(`${it.icon} ${it.name} equipado en espacio ${selectedSlot+1}.`,850);
+ };
+
  ui.eatBtn.style.display=(it.food||it.heal||it.teleport||it.armor)?"block":"none";
- ui.eatBtn.textContent=it.food?"COMER":it.heal?"USAR":it.armor?"VESTIR":"ACTIVAR";ui.eatBtn.onclick=()=>{useInventoryItem(id);renderInventory()};
- ui.deleteItemBtn.style.display="block";ui.deleteItemBtn.onclick=()=>deleteInventoryItem(id)
+ ui.eatBtn.textContent=it.food?"COMER":it.heal?"USAR":it.armor?"VESTIR":"ACTIVAR";
+ ui.eatBtn.onclick=()=>{useInventoryItem(id);renderInventory()};
+
+ ui.deleteItemBtn.style.display="block";
+ ui.deleteItemBtn.onclick=()=>deleteInventoryItem(id);
 }
 
 const CRAFT_CATEGORIES=[
@@ -1152,7 +1196,7 @@ $("continueBtn").onclick=()=>startSolo(false);
 $("newSoloBtn").onclick=()=>{if(loadGame()&&!confirm("¿Crear un mundo nuevo? La partida individual anterior será reemplazada."))return;startSolo(true)};
 $("duoBtn").onclick=startDuo;$("howBtn").onclick=()=>setScreen("how");$("howCloseBtn").onclick=$("howOkBtn").onclick=()=>setScreen("menu");
 $("pauseBtn").onclick=()=>showModal("pauseModal");$("resumeBtn").onclick=()=>hideModal("pauseModal");$("saveBtn").onclick=()=>saveGame(true);$("quitBtn").onclick=()=>{saveGame(false);running=false;cancelAnimationFrame(raf);closeAllModals();online.disconnect();releaseLandscape();setScreen("menu");updateMenuStats()};
-$("inventoryBtn").onclick=()=>{showModal("inventoryModal");renderInventory();renderRecipes();renderAchievements()};$("inventoryCloseBtn").onclick=()=>hideModal("inventoryModal");
+$("inventoryBtn").onclick=()=>{showModal("inventoryModal");renderInventory();renderEquipSlotPicker();renderRecipes();renderAchievements()};$("inventoryCloseBtn").onclick=()=>hideModal("inventoryModal");
 $("chestCloseBtn").onclick=()=>{activeChest=null;hideModal("chestModal")};$("mapBtn").onclick=()=>{showModal("mapModal");renderMap()};$("mapCloseBtn").onclick=()=>hideModal("mapModal");
 $("furnaceCloseBtn").onclick=()=>hideModal("furnaceModal");$("messageOkBtn").onclick=()=>hideModal("messageModal");$("cancelDuoBtn").onclick=()=>{hideModal("duoConnectingModal",false);online.disconnect()};
 $("markerCloseBtn").onclick=cancelMarkerPlacement;$("markerSaveBtn").onclick=savePendingMarker;

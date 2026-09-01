@@ -271,3 +271,207 @@ body{touch-action:none}button{font:inherit}#app{position:fixed;inset:0;backgroun
   .craft-detail{min-height:210px;max-height:270px}
   .craft-detail-empty{min-height:180px}
 }
+
+
+/* =========================================================
+   BURBUJACRAFT v7.1 — inventario fijo para iPhone
+   ========================================================= */
+
+/* La tarjeta ya no deja que las acciones se vayan fuera de pantalla. */
+.inventory-card{
+  height:min(92dvh,720px);
+  display:flex;
+  flex-direction:column;
+  overflow:hidden !important;
+}
+.inventory-card>.modal-head,
+.inventory-card>.tabs{
+  flex:0 0 auto;
+}
+.inventory-card>.tab-page.active{
+  min-height:0;
+}
+#inventoryTab.active{
+  display:flex !important;
+  flex-direction:column;
+  overflow:hidden;
+}
+#inventoryTab .inventory-grid{
+  flex:1 1 auto;
+  min-height:0;
+  max-height:none !important;
+  overflow:auto;
+  overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding-bottom:4px;
+}
+
+/* Barra de acciones: siempre visible en la parte inferior. */
+#inventoryTab .selected-info{
+  position:relative;
+  z-index:6;
+  flex:0 0 auto;
+  margin-top:7px;
+  display:grid;
+  grid-template-columns:52px minmax(130px,1fr) minmax(220px,1.15fr);
+  grid-template-areas:
+    "icon copy slots"
+    "actions actions actions";
+  gap:7px 10px;
+  padding:9px 10px 10px;
+  background:linear-gradient(180deg,#182023,#111719);
+  border-color:#475357;
+  box-shadow:0 -11px 25px rgba(0,0,0,.26);
+}
+#inventoryTab .selected-icon{grid-area:icon}
+#inventoryTab .selected-copy{grid-area:copy;min-width:0;align-self:center}
+#inventoryTab .selected-copy b{
+  display:block;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+#inventoryTab .selected-copy p{
+  display:-webkit-box;
+  -webkit-line-clamp:2;
+  -webkit-box-orient:vertical;
+  overflow:hidden;
+}
+.equip-slot-area{
+  grid-area:slots;
+  align-self:center;
+  min-width:0;
+}
+.equip-slot-area>small{
+  display:block;
+  margin:0 0 4px;
+  color:#a9b1ac;
+  font-size:7px;
+  font-weight:900;
+  letter-spacing:.8px;
+}
+.equip-slot-picker{
+  display:grid;
+  grid-template-columns:repeat(9,1fr);
+  gap:3px;
+}
+.equip-slot-choice{
+  min-width:0;
+  height:30px;
+  border-radius:7px;
+  border:1px solid #394447;
+  background:#20292c;
+  color:#b9c0bb;
+  font-size:8px;
+  font-weight:900;
+}
+.equip-slot-choice.active{
+  background:#b58a23;
+  border-color:#e0b847;
+  color:#17130b;
+  box-shadow:0 0 0 2px rgba(216,173,56,.12);
+}
+#inventoryTab .selected-actions{
+  grid-area:actions;
+  display:grid !important;
+  grid-template-columns:1.35fr 1fr 1fr;
+  gap:6px;
+}
+#inventoryTab .small-btn{
+  min-height:40px;
+  padding:8px 10px;
+  border-radius:10px;
+  font-size:9px;
+}
+#inventoryTab .equip-main{
+  background:#c3992d;
+  border-color:#edc154;
+  font-size:10px;
+}
+
+/* La pestaña activa puede desplazarse, pero la de OBJETOS mantiene fija
+   su barra de acciones mediante las reglas anteriores. */
+#craftTab.active,#achievementsTab.active{
+  overflow:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+/* Ajuste específico para teléfonos horizontales, incluyendo iPhone. */
+@media (pointer:coarse) and (orientation:landscape){
+  .modal{
+    padding:max(3px,env(safe-area-inset-top)) max(5px,env(safe-area-inset-right))
+            max(3px,env(safe-area-inset-bottom)) max(5px,env(safe-area-inset-left)) !important;
+  }
+  .inventory-card{
+    width:calc(100vw - max(10px,env(safe-area-inset-left) + env(safe-area-inset-right))) !important;
+    height:calc(100dvh - max(7px,env(safe-area-inset-top) + env(safe-area-inset-bottom))) !important;
+    max-height:none !important;
+    border-radius:14px !important;
+    padding:9px 11px !important;
+  }
+  .inventory-card .modal-head{
+    min-height:31px;
+    align-items:center;
+  }
+  .inventory-card .modal-head .kicker{font-size:7px;letter-spacing:1.4px}
+  .inventory-card .modal-head h2{font-size:20px;margin:1px 0 0;letter-spacing:-.6px}
+  .inventory-card .close-btn{width:31px;height:31px;font-size:17px}
+  .inventory-card .tabs{
+    margin:5px 0 6px !important;
+    gap:4px;
+  }
+  .inventory-card .tab{
+    padding:6px 9px;
+    font-size:8px;
+    border-radius:8px;
+  }
+  #inventoryTab .inventory-grid{
+    grid-template-columns:repeat(10,1fr) !important;
+    gap:4px;
+  }
+  #inventoryTab .inv-slot{
+    min-height:44px;
+    aspect-ratio:auto;
+  }
+  #inventoryTab .inv-slot .item-icon{font-size:22px}
+  #inventoryTab .selected-info{
+    grid-template-columns:42px minmax(115px,.85fr) minmax(245px,1.35fr);
+    gap:5px 8px;
+    padding:6px 8px 7px;
+    margin-top:5px;
+    border-radius:11px;
+  }
+  #inventoryTab .selected-icon{
+    width:39px;height:39px;border-radius:9px;font-size:22px;
+  }
+  #inventoryTab .selected-copy b{font-size:10px}
+  #inventoryTab .selected-copy p{
+    font-size:7px;
+    margin-top:2px;
+    -webkit-line-clamp:1;
+  }
+  .equip-slot-area>small{font-size:6px;margin-bottom:3px}
+  .equip-slot-choice{
+    height:27px;
+    font-size:7px;
+  }
+  #inventoryTab .small-btn{
+    min-height:38px;
+    font-size:9px;
+  }
+}
+
+/* Si la pantalla es especialmente baja, se priorizan inventario + controles. */
+@media (pointer:coarse) and (orientation:landscape) and (max-height:390px){
+  #inventoryTab .inventory-grid{
+    grid-template-columns:repeat(11,1fr) !important;
+  }
+  #inventoryTab .inv-slot{min-height:38px}
+  #inventoryTab .selected-info{
+    grid-template-columns:38px minmax(100px,.75fr) minmax(235px,1.45fr);
+    padding:5px 7px;
+  }
+  #inventoryTab .selected-icon{width:35px;height:35px;font-size:20px}
+  #inventoryTab .small-btn{min-height:34px;padding:6px 8px}
+  .equip-slot-choice{height:24px}
+}
