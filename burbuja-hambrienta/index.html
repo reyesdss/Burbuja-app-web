@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="theme-color" content="#080912">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Burbuja Hambrienta">
+  <meta name="description" content="Burbuja Hambrienta — arcade lovecraftiano para uno o dos jugadores.">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="stylesheet" href="styles.css">
+  <title>BURBUJA HAMBRIENTA</title>
+</head>
+<body>
+<div id="app">
+
+  <section id="menuScreen" class="screen active">
+    <div class="menu-card">
+      <div class="menu-copy">
+        <div class="eyebrow">BURBUJA // ARCHIVO ABISAL</div>
+        <h1>BURBUJA<br>HAMBRIENTA</h1>
+        <p class="lead">
+          Recorre templos que cambian en cada descenso, devora las runas y evita a las entidades.
+          Despierta los <b>Ojos Antiguos</b> para convertirte, por unos segundos, en aquello que ellas deberían temer.
+        </p>
+
+        <div class="stat-pills">
+          <div class="pill"><span>Récord</span><b id="menuHighScore">0</b></div>
+          <div class="pill"><span>Mejor nivel</span><b id="menuBestLevel">1</b></div>
+          <div class="pill"><span>Modo</span><b>Solo + Dúo</b></div>
+        </div>
+
+        <div class="menu-actions">
+          <button id="playBtn" class="btn primary">JUGAR SOLO</button>
+          <button id="duoBtn" class="btn secondary">JUGAR DÚO</button>
+          <button id="howBtn" class="btn secondary">CÓMO JUGAR</button>
+        </div>
+
+        <p class="iphone-note">Optimizado para iPhone · también funciona en computadora y Android.</p>
+      </div>
+
+      <div class="menu-art" aria-hidden="true">
+        <div class="temple-panel">
+          <div class="abyss-ring r1"></div>
+          <div class="abyss-ring r2"></div>
+          <div class="abyss-ring r3"></div>
+          <div class="hero-preview">
+            <span class="hero-eye"></span>
+          </div>
+          <div class="enemy-preview deep"></div>
+          <div class="enemy-preview tongue"></div>
+          <div class="enemy-preview eye"></div>
+          <div class="rune-preview a"></div>
+          <div class="rune-preview b"></div>
+          <div class="rune-preview c"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="howScreen" class="screen">
+    <div class="info-card">
+      <div class="eyebrow">MANUAL DEL DESCENSO</div>
+      <h2>Cómo jugar</h2>
+
+      <div class="how-grid">
+        <article>
+          <div class="how-icon purple">◉</div>
+          <h3>Solo o en pareja</h3>
+          <p>Recorre el templo y come todas las runas doradas. Puedes jugar individual o entrar al mismo laberinto en dúo. En dúo, un jugador es morado y el otro rosa.</p>
+        </article>
+
+        <article>
+          <div class="how-icon cyan">◉</div>
+          <h3>Evita a las entidades</h3>
+          <p>Cada ser persigue de una manera distinta. Un contacto normal rompe una parte de tu cordura.</p>
+        </article>
+
+        <article>
+          <div class="how-icon gold">◉</div>
+          <h3>Despierta un Ojo Antiguo</h3>
+          <p>Al comer una reliquia grande se activa <b>MODO DEVORAR</b>. El color de todo cambia de forma evidente y ahora puedes comerte a los seres.</p>
+        </article>
+
+        <article>
+          <div class="how-icon pink">∞</div>
+          <h3>Desciende sin límite</h3>
+          <p>Cada nivel crea un laberinto nuevo y las entidades se vuelven más peligrosas. Tu récord queda guardado en el teléfono.</p>
+        </article>
+      </div>
+
+      <button id="howBackBtn" class="btn primary">ENTENDIDO</button>
+    </div>
+  </section>
+
+  <section id="gameScreen" class="screen game-screen">
+    <div id="gameShell">
+      <canvas id="gameCanvas"></canvas>
+
+      <header id="hud">
+        <div class="hud-side">
+          <div class="hud-box">
+            <small>PUNTOS</small>
+            <b id="scoreEl">000000</b>
+          </div>
+          <div class="hud-box">
+            <small>NIVEL</small>
+            <b id="levelEl">1</b>
+          </div>
+        </div>
+
+        <div class="hud-center">
+          <div id="levelNameEl">CÁMARA DEL UMBRAL</div>
+          <div class="rune-progress"><span id="runeFill"></span></div>
+          <small id="runesEl">0 / 0 RUNAS</small>
+        </div>
+
+        <div class="hud-side right">
+          <div class="hud-box">
+            <small>CORDURA</small>
+            <b id="livesEl">● ● ●</b>
+          </div>
+          <button id="pauseBtn" class="icon-btn" aria-label="Pausar">Ⅱ</button>
+          <button id="soundBtn" class="icon-btn" aria-label="Sonido">♪</button>
+        </div>
+      </header>
+
+      <div id="powerBanner">
+        <strong>MODO DEVORAR</strong>
+        <span id="powerTimer">8.0 s</span>
+      </div>
+
+      <div id="toast"></div>
+
+      <div id="mobileControls">
+        <div class="dpad">
+          <button class="pad-btn up" data-dir="up">▲</button>
+          <button class="pad-btn left" data-dir="left">◀</button>
+          <div class="pad-center"></div>
+          <button class="pad-btn right" data-dir="right">▶</button>
+          <button class="pad-btn down" data-dir="down">▼</button>
+        </div>
+      </div>
+
+      <div class="grain"></div>
+      <div class="vignette"></div>
+    </div>
+  </section>
+
+  <div id="pauseOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="eyebrow">DESCENSO INTERRUMPIDO</div>
+      <h2>Pausa</h2>
+      <button id="resumeBtn" class="btn primary">CONTINUAR</button>
+      <button id="quitBtn" class="btn secondary">SALIR AL MENÚ</button>
+    </div>
+  </div>
+
+  <div id="levelOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="eyebrow">SELLO COMPLETADO</div>
+      <h2 id="levelCompleteTitle">Nivel superado</h2>
+      <p id="levelCompleteText"></p>
+      <div class="score-chip">+ <span id="levelBonusEl">1000</span> PUNTOS</div>
+      <button id="nextLevelBtn" class="btn primary">DESCENDER MÁS</button>
+    </div>
+  </div>
+
+  <div id="gameOverOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="eyebrow">EL TEMPLO TE RECLAMÓ</div>
+      <h2>Tu mente cedió</h2>
+      <div class="final-stats">
+        <div><span>Puntuación</span><b id="finalScoreEl">0</b></div>
+        <div><span>Nivel</span><b id="finalLevelEl">1</b></div>
+        <div><span>Entidades devoradas</span><b id="finalEatenEl">0</b></div>
+      </div>
+      <button id="retryBtn" class="btn primary">VOLVER A INTENTAR</button>
+      <button id="gameOverMenuBtn" class="btn secondary">MENÚ</button>
+    </div>
+  </div>
+
+  <div id="duoConnectOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="eyebrow">BURBUJA // ENLACE ABISAL</div>
+      <h2>Conectando el dúo</h2>
+      <p id="duoConnectText">Buscando a la otra persona de Burbuja...</p>
+      <button id="duoCancelBtn" class="btn secondary">CANCELAR</button>
+    </div>
+  </div>
+
+  <div id="duoErrorOverlay" class="overlay">
+    <div class="overlay-card">
+      <div class="eyebrow">NO SE PUDO ABRIR EL ENLACE</div>
+      <h2>Modo dúo</h2>
+      <p id="duoErrorText"></p>
+      <button id="duoErrorOkBtn" class="btn primary">ENTENDIDO</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="firebase-config.js"></script>
+<script src="online.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
