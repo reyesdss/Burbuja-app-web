@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0d0a12">
+  <title>Burbuja</title>
+  <style>
+    html,body{
+      margin:0;
+      width:100%;
+      min-height:100%;
+      background:#0d0a12;
+      color:#fff;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+    body{
+      min-height:100dvh;
+      display:grid;
+      place-items:center;
+    }
+    .open{
+      display:grid;
+      justify-items:center;
+      gap:9px;
+    }
+    .bubble{font-size:34px}
+    .text{font-size:13px;color:#cdbfca}
+  </style>
+</head>
+<body>
+  <div class="open">
+    <div class="bubble">🫧</div>
+    <div class="text">Abriendo Burbuja…</div>
+  </div>
+
+  <script>
+    (() => {
+      try {
+        const target = new URL("./burbuja/", location.href);
+        const params = new URLSearchParams(location.search);
+        params.set("rootfix", "20260903");
+        target.search = params.toString();
+        target.hash = location.hash || "";
+        location.replace(target.href);
+      } catch {
+        location.href = "./burbuja/?rootfix=20260903";
+      }
+    })();
+  </script>
+</body>
+</html>
