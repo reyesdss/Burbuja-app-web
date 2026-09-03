@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0d0a12" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Burbuja" />
+  <meta name="format-detection" content="telephone=no" />
+  <title>Burbuja</title>
+  <script>
+    /*
+      Limpieza consolidada:
+      elimina únicamente Service Workers antiguos de la raíz de este proyecto
+      y de /burbuja/. No toca burbujacraft ni burbuja-hambrienta.
+    */
+    (()=>{
+      try{
+        const parts=location.pathname.split('/').filter(Boolean);
+        const isGithubProject=location.hostname.endsWith('github.io') && parts.length>0;
+        const repoRoot=isGithubProject?`/${parts[0]}/`:'/';
+        const burbujaScope=`${repoRoot}burbuja/`;
+
+        if('serviceWorker' in navigator){
+          navigator.serviceWorker.getRegistrations().then(regs=>Promise.all(
+            regs.filter(r=>{
+              try{
+                const p=new URL(r.scope).pathname;
+                return p===repoRoot || p===burbujaScope;
+              }catch{return false}
+            }).map(r=>r.unregister())
+          )).catch(()=>{});
+        }
+
+        if('caches' in window){
+          caches.keys().then(keys=>Promise.all(
+            keys.filter(k=>{
+              const n=k.toLowerCase();
+              return n.startsWith('burbuja-root') || n.startsWith('burbuja-shell');
+            }).map(k=>caches.delete(k))
+          )).catch(()=>{});
+        }
+      }catch{}
+    })();
+  </script>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.18.0/firebase-app.js" crossorigin />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.18.0/firebase-auth.js" crossorigin />
+  <link rel="modulepreload" href="https://www.gstatic.com/firebasejs/12.18.0/firebase-firestore.js" crossorigin />
+  <link rel="dns-prefetch" href="//www.gstatic.com" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+  <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+  <link rel="stylesheet" href="./styles.css?b=20260903-clean" />
+
+  <style>
+    html.burbuja-preboot #messages { overscroll-behavior-y: contain; }
+    html.burbuja-preboot #composer { transition: opacity .15s ease; }
+  </style>
+</head>
+<body>
+  <div id="loadingScreen" class="screen loading-screen">
+    <div class="loading-brand">
+      <div class="brand brand-large"><span class="brand-bubbles"><i></i><i></i></span><span>burbuja</span></div>
+      <div class="loading-dots"><i></i><i></i><i></i></div>
+      <p id="loadingText">Abriendo tu Burbuja…</p>
+      <button id="loadingRetryBtn" class="secondary-btn compact hidden" type="button">Reintentar</button>
+    </div>
+  </div>
+  <div id="setupScreen" class="screen center-screen hidden">
+    <div class="auth-card">
+      <div class="brand brand-large">
+        <span class="brand-bubbles"><i></i><i></i></span>
+        <span>burbuja</span>
+      </div>
+      <h1>Falta conectar Firebase</h1>
+      <p class="muted">La interfaz ya está lista. Abre <strong>firebase-config.js</strong> y pega la configuración de tu proyecto Firebase.</p>
+      <div class="setup-code">firebase-config.js</div>
+      <p class="tiny">Después recarga la página.</p>
+    </div>
+  </div>
+
+  <main id="authScreen" class="screen auth-screen hidden">
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <section class="auth-wrap">
+      <div class="brand brand-large">
+        <span class="brand-bubbles"><i></i><i></i></span>
+        <span>burbuja</span>
+      </div>
+      <p class="auth-subtitle">Tu cuenta puede tener varias Burbujas. Cada una sigue siendo solo para dos.</p>
+
+      <div class="auth-card glass">
+        <div class="segmented">
+          <button id="tabLogin" class="seg active" type="button">Entrar</button>
+          <button id="tabRegister" class="seg" type="button">Crear cuenta</button>
+        </div>
+
+        <form id="loginForm" class="auth-form">
+          <label>
+            Usuario
+            <input id="loginUser" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="tu_usuario" required />
+          </label>
+          <label>
+            Contraseña
+            <div class="password-wrap">
+              <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••" required />
+              <button class="eye-btn" type="button" data-toggle-password="#loginPassword" aria-label="Mostrar contraseña">◉</button>
+            </div>
+          </label>
+          <button class="primary-btn" type="submit">
+            <span>Entrar a Burbuja</span><span>♡</span>
+          </button>
+          <p class="form-note">Entra con tu cuenta y elige la Burbuja que quieras abrir.</p>
+        </form>
+
+        <form id="registerForm" class="auth-form hidden">
+          <label>
+            Tu nombre
+            <input id="registerName" maxlength="30" autocomplete="name" placeholder="¿Cómo quieres aparecer?" required />
+          </label>
+          <label>
+            Nombre de usuario
+            <input id="registerUser" maxlength="20" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="tu_usuario" required />
+            <span class="field-help">3–20 caracteres: letras, números, punto, guion o guion bajo.</span>
+          </label>
+          <label>
+            Contraseña
+            <div class="password-wrap">
+              <input id="registerPassword" type="password" minlength="8" autocomplete="new-password" placeholder="Mínimo 8 caracteres" required />
+              <button class="eye-btn" type="button" data-toggle-password="#registerPassword" aria-label="Mostrar contraseña">◉</button>
+            </div>
+          </label>
+          <label>
+            Repite la contraseña
+            <input id="registerPassword2" type="password" minlength="8" autocomplete="new-password" placeholder="••••••••" required />
+          </label>
+          <button class="primary-btn" type="submit">
+            <span>Crear mi cuenta</span><span>🫧</span>
+          </button>
+          <p id="slotsHint" class="form-note">Una cuenta puede tener varias Burbujas; cada Burbuja admite máximo 2 personas.</p>
+        </form>
+      </div>
+
+      <p class="tiny auth-footer">Burbuja · hecha para dos</p>
+    </section>
+  </main>
+
+  <main id="bubbleScreen" class="screen bubble-screen hidden">
+    <section class="bubble-hub">
+      <header class="bubble-hub-header">
+        <button id="bubbleBackBtn" class="round-back hidden" type="button" aria-label="Volver">‹</button>
+        <div class="bubble-hub-title">
+          <div class="brand bubble-hub-brand"><span class="brand-bubbles"><i></i><i></i></span><span>burbuja</span></div>
+          <p class="eyebrow">TU CUENTA</p>
+          <h1>Mis Burbujas</h1>
+          <p id="bubbleAccountName" class="muted">Elige dónde quieres entrar.</p>
+        </div>
+      </header>
+
+      <div id="bubbleList" class="bubble-list"></div>
+
+      <div class="bubble-hub-actions">
+        <button id="openCreateBubbleBtn" class="hub-action primary-hub" type="button"><span>＋</span><b>Nueva Burbuja</b></button>
+        <button id="openJoinBubbleBtn" class="hub-action" type="button"><span>🔗</span><b>Unirme con código</b></button>
+      </div>
+
+      <div id="bubbleForms" class="bubble-forms hidden">
+        <form id="createBubbleForm" class="bubble-action-card hidden" data-bubble-form="create">
+          <div class="bubble-form-head"><div><small>NUEVA</small><h2>Crear una Burbuja</h2></div><button class="bubble-form-close" type="button" data-close-bubble-forms>×</button></div>
+          <label>Nombre<input id="createBubbleName" maxlength="28" placeholder="Ej. Nosotros" required /></label>
+          <label>Emoji<select id="createBubbleEmoji"><option>💜</option><option>🩷</option><option>🫧</option><option>🌙</option><option>✨</option><option>🎮</option><option>🌸</option><option>🖤</option></select></label>
+          <button class="primary-btn compact" type="submit">Crear Burbuja</button>
+        </form>
+
+        <form id="joinBubbleForm" class="bubble-action-card hidden" data-bubble-form="join">
+          <div class="bubble-form-head"><div><small>INVITACIÓN</small><h2>Unirme a una Burbuja</h2></div><button class="bubble-form-close" type="button" data-close-bubble-forms>×</button></div>
+          <p class="bubble-form-copy">Tu persona debe compartirte el código de 6 caracteres de su Burbuja.</p>
+          <label>Código<input id="joinBubbleCode" class="invite-input" maxlength="6" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ABC123" required /></label>
+          <button class="primary-btn compact" type="submit">Unirme</button>
+        </form>
+      </div>
+
+      <button id="bubbleHubLogout" class="danger-btn bubble-hub-logout" type="button">Cerrar sesión</button>
+    </section>
+  </main>
+
+  <main id="appShell" class="app-shell hidden">
+    <header class="app-header">
+      <button id="partnerHeader" class="partner-chip" type="button" aria-label="Información de tu persona o invitación">
+        <span id="partnerAvatar" class="avatar avatar-small">♡</span>
+        <span class="partner-copy"><strong id="partnerName">Tu persona</strong><small id="partnerPresence">esperando...</small></span>
+      </button>
+      <div class="header-actions">
+        <button id="toggleSearchBtn" class="icon-btn header-tool search-header-btn" type="button" aria-label="Buscar">⌕</button>
+        <button id="bubbleSwitcher" class="icon-btn bubble-switcher" type="button" aria-label="Cambiar Burbuja" title="Mis Burbujas"><span id="currentBubbleEmoji">🫧</span><span id="currentBubbleName" class="sr-only">Nuestra Burbuja</span></button>
+        <button id="headerNudge" class="icon-btn heart-btn" type="button" aria-label="Pensando en ti">♡</button>
+      </div>
+    </header>
+
+    <div id="viewStack" class="view-stack">
+    <section id="viewChat" class="view active-view">
+      <div class="chat-toolbar">
+        <div id="chatSearchBox" class="chat-search-box hidden">
+          <input id="chatSearchInput" type="search" placeholder="Buscar en esta Burbuja…" />
+          <span id="chatSearchCount">0</span>
+          <input id="chatDateInput" type="date" aria-label="Ir a fecha" />
+          <button id="closeSearchBtn" type="button">×</button>
+        </div>
+      </div>
+      <button id="pinnedBanner" class="pinned-banner hidden" type="button">
+        <span>📌</span>
+        <span><small>Fijado</small><strong id="pinnedText"></strong></span>
+      </button>
+
+      <button id="loadOlderBtn" class="load-older-btn" type="button">↑ Cargar mensajes anteriores</button>
+      <div id="messages" class="messages" aria-live="polite">
+        <div class="empty-state">
+          <div class="empty-bubble">🫧</div>
+          <h2>Aquí comienza su Burbuja</h2>
+          <p>El primer mensaje siempre cuenta.</p>
+        </div>
+      </div>
+
+      <button id="newMessagesBtn" class="new-messages-btn hidden" type="button">↓ Mensajes nuevos</button>
+      <div id="typingLine" class="typing-line hidden">
+        <span class="typing-dots"><i></i><i></i><i></i></span>
+        <span id="typingName">escribiendo...</span>
+      </div>
+
+      <div id="stickerTray" class="sticker-tray hidden" aria-label="Stickers">
+        <div class="sticker-tray-head">
+          <div><small>STICKERS</small><strong>Frases y Mapachín ♡</strong></div>
+          <button id="closeStickerTray" type="button" aria-label="Cerrar stickers">×</button>
+        </div>
+        <div id="stickerTabs" class="sticker-tabs">
+          <button class="sticker-tab active" data-sticker-tab="phrases" type="button">Frases</button>
+          <button class="sticker-tab" data-sticker-tab="mapachin" type="button">Mapachín</button>
+          <button class="sticker-tab" data-sticker-tab="recent" type="button">Recientes</button>
+          <button class="sticker-tab" data-sticker-tab="favorites" type="button">★</button>
+        </div>
+        <div id="stickerGrid" class="sticker-grid"></div>
+      </div>
+
+      <div id="replyBar" class="reply-bar hidden"><div><small id="replyBarLabel">RESPONDIENDO</small><strong id="replyBarText"></strong></div><button id="cancelReplyBtn" type="button">×</button></div>
+      <div id="pendingMedia" class="pending-media hidden"></div>
+      <form id="composer" class="composer" autocomplete="off">
+        <input id="chatImageInput" type="file" accept="image/*" multiple hidden />
+        <button id="attachImageBtn" class="composer-action" type="button" aria-label="Enviar foto" title="Enviar foto">📷</button>
+        <button id="openStickerBtn" class="composer-action sticker-open-btn" type="button" aria-label="Enviar sticker" title="Stickers">♡</button>
+        <textarea id="messageInput" rows="1" maxlength="3500" placeholder="Escribe un mensaje…" enterkeyhint="send"></textarea>
+        <button id="sendBtn" class="send-btn" type="submit" aria-label="Enviar mensaje" title="Enviar">➤</button>
+      </form>
+    </section>
+
+    <section id="viewUs" class="view">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">NUESTRA BURBUJA</p>
+          <h1>Nosotros</h1>
+        </div>
+        <span class="section-emoji">♡</span>
+      </div>
+
+      <section class="us-stories-panel" aria-label="Estados de 24 horas">
+        <div class="us-stories-heading"><div><small>MOMENTOS</small><strong>Estados · 24 h</strong></div><span>Fotos de lo que están haciendo</span></div>
+        <div id="storyRail" class="story-rail">
+          <button id="addStoryBtn" class="story-chip story-add" type="button"><span id="myStoryAvatar" class="story-avatar">♡</span><i>＋</i><small>Tu estado</small></button>
+          <button id="partnerStoryBtn" class="story-chip hidden" type="button"><span id="partnerStoryAvatar" class="story-avatar">♡</span><i class="story-dot"></i><small id="partnerStoryName">Su estado</small></button>
+        </div>
+        <button id="addAnotherStoryBtn" class="add-story-wide" type="button">
+          <span>＋</span><strong>Agregar estado</strong><small>Foto o texto · hasta 30 activos</small>
+        </button>
+        <section id="whileAwayCard" class="while-away-card hidden" aria-live="polite">
+          <div class="while-away-head">
+            <div><small>MIENTRAS NO ESTABAS ♡</small><strong id="whileAwayTitle">Hay cosas nuevas</strong></div>
+            <button id="dismissWhileAway" type="button" aria-label="Ocultar">×</button>
+          </div>
+          <div id="whileAwayList" class="while-away-list"></div>
+        </section>
+      </section>
+
+      <div class="couple-card">
+        <div class="couple-avatars">
+          <span id="usMeAvatar" class="avatar avatar-large">♡</span>
+          <span class="couple-heart">♥</span>
+          <span id="usPartnerAvatar" class="avatar avatar-large">♡</span>
+        </div>
+        <div id="relationshipCounter" class="relationship-counter">Configuren su fecha especial ♡</div>
+        <label class="date-row">
+          <span>Desde</span>
+          <input id="relationshipDate" type="date" />
+        </label>
+      </div>
+
+      <section class="v15-us-overview" aria-label="Resumen de la Burbuja">
+        <div id="burbujaSummary" class="burbuja-summary">
+          <span>🔥 <b id="summaryStreak">0</b> días</span>
+          <span>📸 <b id="summaryStories">0</b> estados</span>
+          <span>🎮 <b id="summaryPoints">0</b> pts</span>
+        </div>
+
+        <button id="memoryCard" class="memory-card hidden" type="button">
+          <div class="memory-kicker">❤️ UN RECUERDO</div>
+          <div id="memoryMedia" class="memory-media hidden"></div>
+          <strong id="memoryText">Un momento de ustedes</strong>
+          <small id="memoryWhen">Toca para volver a verlo</small>
+        </button>
+
+        <div class="us-utility-grid">
+          <button id="openSavedBtn" type="button"><span>⭐</span><b>Guardados</b><small id="savedCountMini">0</small></button>
+          <button id="openGalleryBtn" type="button"><span>🖼️</span><b>Galería</b><small>Fotos</small></button>
+          <button id="openLinksBtn" type="button"><span>🔗</span><b>Enlaces</b><small>Compartidos</small></button>
+          <button id="openNoteBtn" type="button"><span>📝</span><b>Nuestra nota</b><small id="noteMini">Vacía</small></button>
+          <button id="openDatesBtn" type="button"><span>📅</span><b>Fechas</b><small id="dateMini">Agregar</small></button>
+        </div>
+        <div id="nextSpecialDate" class="next-special-date hidden"></div>
+      </section>
+
+      <div class="feature-grid">
+        <button id="openStatusBtn" class="feature-card" type="button">
+          <span class="feature-icon">💭</span>
+          <span>
+            <small>Mi estado</small>
+            <strong id="myStatusText">Disponible</strong>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+
+        <button id="nudgeBtn" class="feature-card nudge-card" type="button">
+          <span class="feature-icon">💗</span>
+          <span>
+            <small>Un toquecito</small>
+            <strong>Pensando en ti</strong>
+          </span>
+          <span class="chevron">›</span>
+        </button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-heading">
+          <div><small>SU MOMENTO</small><h2>¿Qué está haciendo?</h2></div>
+          <span id="partnerStatusEmoji" class="panel-big-emoji">✨</span>
+        </div>
+        <div class="partner-status">
+          <span id="partnerStatusAvatar" class="avatar">♡</span>
+          <div>
+            <strong id="partnerStatusName">Tu persona</strong>
+            <p id="partnerStatusText">Sin estado todavía</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-heading">
+          <div><small>PARA LOS DOS</small><h2>Mensaje fijado</h2></div>
+          <span>📌</span>
+        </div>
+        <div class="inline-save">
+          <input id="pinnedInput" maxlength="140" placeholder="Ej. Cena el viernes a las 8 💗" />
+          <button id="savePinnedBtn" class="small-btn" type="button">Guardar</button>
+        </div>
+      </div>
+
+      <div class="last-nudge panel soft-panel">
+        <span>🫧</span>
+        <div>
+          <small>ÚLTIMO TOQUECITO</small>
+          <p id="lastNudgeText">Aún no se han mandado uno.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="viewGames" class="view">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">NUESTRO ARCADE</p>
+          <h1>Juegos</h1>
+        </div>
+        <span class="section-emoji">🎮</span>
+      </div>
+
+      <div class="streak-card">
+        <div class="streak-flame">
+          <span>🔥</span>
+          <strong id="streakCount">0</strong>
+        </div>
+        <div class="streak-copy">
+          <small>RACHA DE LOS DOS</small>
+          <h2 id="streakTitle">Activen el día juntos</h2>
+          <p id="streakMessage">Enviar un mensaje o completar una actividad activa tu día.</p>
+          <div class="streak-members">
+            <span id="streakMe" class="streak-member">♡ Tú</span>
+            <span id="streakPartner" class="streak-member">♡ Tu persona</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="burbuja-ranking-card">
+        <div class="ranking-head">
+          <div>
+            <small>PUNTOS BURBUJA · INDIVIDUALES</small>
+            <h2>Clasificación</h2>
+          </div>
+          <div class="ranking-cup">🏆</div>
+        </div>
+        <div class="ranking-list">
+          <div id="rankFirst" class="ranking-row first">
+            <span class="rank-place">1.º</span>
+            <div class="rank-avatar">👑</div>
+            <div class="rank-person"><strong id="rankFirstName">—</strong><small id="rankFirstTag">Primer lugar</small></div>
+            <b id="rankFirstPoints">0 🫧</b>
+          </div>
+          <div id="rankSecond" class="ranking-row second">
+            <span class="rank-place">2.º</span>
+            <div class="rank-avatar">♡</div>
+            <div class="rank-person"><strong id="rankSecondName">—</strong><small id="rankSecondTag">Segundo lugar</small></div>
+            <b id="rankSecondPoints">0 🫧</b>
+          </div>
+        </div>
+        <p id="myRankSummary" class="my-rank-summary">Tus puntos: 0 🫧</p>
+      </div>
+
+      <div class="featured-games">
+        <article class="featured-game craft-game">
+          <div class="game-art craft-art">
+            <span class="pixel-tree">🌲</span>
+            <span class="pixel-heart">♡</span>
+          </div>
+          <div class="featured-copy">
+            <span class="game-tag">SOLO + DÚO</span>
+            <h2>BURBUJACRAFT</h2>
+            <p>Exploren, construyan, sobrevivan, pesquen y compartan el mismo mundo.</p>
+            <button id="openBurbujacraft" class="game-launch-btn" type="button">Jugar Burbujacraft</button>
+          </div>
+        </article>
+
+        <article class="featured-game hungry-game">
+          <div class="game-art hungry-art">
+            <span class="hungry-purple">●</span>
+            <span class="hungry-pink">●</span>
+            <span class="hungry-eye">◉</span>
+          </div>
+          <div class="featured-copy">
+            <span class="game-tag">SOLO + DÚO</span>
+            <h2>BURBUJA HAMBRIENTA</h2>
+            <p>Recorran juntos el templo, recojan las runas y activen el modo DEVORAR.</p>
+            <button id="openBurbujaHambrienta" class="game-launch-btn pink-launch" type="button">Jugar Burbuja Hambrienta</button>
+          </div>
+        </article>
+      </div>
+
+      <div class="games-subtitle">
+        <small>CAMBIA CADA DÍA</small>
+        <h2>Para conocernos más</h2>
+      </div>
+
+      <div class="game-card compatibility-card">
+        <span class="game-tag">COINCIDENCIA DEL DÍA</span>
+        <h2 id="compatQuestion">¿Qué plan se te antoja más hoy?</h2>
+        <p class="muted">Respondan pensando en cómo se sienten hoy. La respuesta puede cambiar otro día.</p>
+        <div id="compatOptions" class="choice-grid"></div>
+        <div id="compatResult" class="game-result">Elige tu respuesta ♡</div>
+      </div>
+
+      <div class="game-card guess-card">
+        <span class="game-tag">ADIVINA MI RESPUESTA</span>
+        <h2 id="guessQuestion">¿Qué elegiría hoy?</h2>
+        <p class="muted">Primero responde por ti y luego intenta adivinar qué elegirá tu persona.</p>
+
+        <div class="guess-section">
+          <small>MI RESPUESTA</small>
+          <div id="guessMineOptions" class="choice-grid compact-grid"></div>
+        </div>
+
+        <div class="guess-section">
+          <small>CREO QUE MI PERSONA ELEGIRÁ</small>
+          <div id="guessPartnerOptions" class="choice-grid compact-grid"></div>
+        </div>
+
+        <button id="saveGuessGame" class="primary-btn compact" type="button">Guardar mis dos respuestas</button>
+        <div id="guessResult" class="game-result">Cuando ambos respondan descubrirán quién acertó.</div>
+      </div>
+
+      <div class="game-card">
+        <span class="game-tag">ESTO O AQUELLO</span>
+        <h2>¿Con cuál se quedan hoy?</h2>
+        <p id="totPrompt" class="muted">Elijan sin ver primero la respuesta del otro.</p>
+        <div id="totOptions" class="tot-options"></div>
+        <div id="totResult" class="game-result">Elige una opción ♡</div>
+      </div>
+
+      <div class="game-card">
+        <span class="game-tag">PREGUNTA DEL DÍA</span>
+        <h2 id="dailyQuestion">¿Qué momento conmigo recuerdas con más cariño?</h2>
+        <textarea id="dailyAnswer" maxlength="500" rows="4" placeholder="Escribe tu respuesta..."></textarea>
+        <button id="saveDailyAnswer" class="primary-btn compact" type="button">Guardar respuesta</button>
+        <div id="partnerAnswerBox" class="partner-answer locked">
+          <small>RESPUESTA DE TU PERSONA</small>
+          <p id="partnerDailyAnswer">Se desbloquea cuando ambos respondan.</p>
+        </div>
+      </div>
+
+      <!-- Elementos antiguos ocultos únicamente para mantener compatibilidad. -->
+      <div class="legacy-game-hidden" aria-hidden="true">
+        <div id="rouletteResult">🫧</div>
+        <button id="rouletteBtn" type="button">Elegir</button>
+      </div>
+    </section>
+
+    <section id="viewProfile" class="view">
+      <div class="section-title">
+        <div>
+          <p class="eyebrow">TU ESPACIO</p>
+          <h1>Perfil</h1>
+        </div>
+        <span class="section-emoji">👤</span>
+      </div>
+
+      <div class="profile-hero">
+        <button id="avatarPickerBtn" class="avatar avatar-xl avatar-button" type="button" aria-label="Cambiar foto">♡</button>
+        <input id="avatarInput" type="file" accept="image/*" hidden />
+        <div>
+          <h2 id="profileHeroName">Tu nombre</h2>
+          <p id="profileHeroHandle">@usuario</p>
+        </div>
+      </div>
+
+      <div class="panel profile-form">
+        <label>
+          Nombre
+          <input id="profileNameInput" maxlength="30" />
+        </label>
+        <label>
+          Nombre de usuario
+          <div class="handle-input"><span>@</span><input id="profileHandleInput" maxlength="20" autocapitalize="none" spellcheck="false" /></div>
+        </label>
+        <label>
+          Sobre mí
+          <textarea id="profileBioInput" maxlength="120" rows="3" placeholder="Una frase pequeñita..."></textarea>
+        </label>
+        <button id="saveProfileBtn" class="primary-btn compact" type="button">Guardar perfil</button>
+      </div>
+
+      <div class="panel">
+        <div class="panel-heading">
+          <div><small>SEGURIDAD</small><h2>Cambiar contraseña</h2></div>
+          <span>🔒</span>
+        </div>
+        <div class="stack">
+          <input id="newPasswordInput" type="password" minlength="8" autocomplete="new-password" placeholder="Nueva contraseña (mínimo 8)" />
+          <button id="changePasswordBtn" class="secondary-btn" type="button">Actualizar contraseña</button>
+        </div>
+        <p class="tiny">Burbuja usa un identificador interno; tu nombre de usuario sí puede cambiar sin alterar tu cuenta.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-heading"><div><small>CHAT</small><h2>Fondo de esta Burbuja</h2></div><span>🎨</span></div>
+        <div id="chatThemePicker" class="theme-picker">
+          <button data-chat-theme="oscuro" type="button">Oscuro</button><button data-chat-theme="estrellas" type="button">Estrellas</button><button data-chat-theme="burbujas" type="button">Burbujas</button><button data-chat-theme="rosa-morado" type="button">Rosa/Morado</button><button data-chat-theme="minimal" type="button">Minimal</button>
+        </div>
+        <input id="chatBackgroundInput" type="file" accept="image/*" hidden />
+        <div class="theme-photo-actions">
+          <button id="chooseChatBackground" class="secondary-btn compact" type="button">🖼️ Usar una foto</button>
+          <button id="removeChatBackground" class="ghost-btn compact hidden" type="button">Quitar foto</button>
+        </div>
+        <p class="tiny">La foto se ajusta al chat sin deformarse y se comparte solo dentro de esta Burbuja.</p>
+        <div class="accent-row" aria-label="Color de esta Burbuja">
+          <small>Color</small>
+          <button data-accent="#ff4f91" class="accent-dot" type="button" aria-label="Rosa"></button>
+          <button data-accent="#b86cff" class="accent-dot" type="button" aria-label="Morado"></button>
+          <button data-accent="#65b8ff" class="accent-dot" type="button" aria-label="Azul"></button>
+          <button data-accent="#ff7b6b" class="accent-dot" type="button" aria-label="Coral"></button>
+          <button data-accent="#71d7b4" class="accent-dot" type="button" aria-label="Menta"></button>
+        </div>
+      </div>
+
+      <button id="openStorageBtn" class="secondary-btn manage-bubbles-btn" type="button">🧹 Administrar almacenamiento</button>
+      <button id="manageBubblesBtn" class="secondary-btn manage-bubbles-btn" type="button">🫧 Mis Burbujas</button>
+      <button id="logoutBtn" class="danger-btn" type="button">Cerrar sesión</button>
+      <p class="tiny center">Burbuja</p>
+    </section>
+
+    </div>
+
+    <nav class="bottom-nav" aria-label="Navegación">
+      <button class="nav-btn active" data-view="Chat" type="button"><span>💬</span><small>Chat</small></button>
+      <button class="nav-btn" data-view="Us" type="button"><span>♡</span><small>Nosotros</small></button>
+      <button class="nav-btn" data-view="Games" type="button"><span>🎮</span><small>Juegos</small></button>
+      <button class="nav-btn" data-view="Profile" type="button"><span>👤</span><small>Perfil</small></button>
+    </nav>
+  </main>
+
+
+  <div id="gameLauncherModal" class="game-launcher hidden">
+    <div class="game-launcher-bar">
+      <button id="closeGameLauncher" class="game-back-btn" type="button">‹ Volver a Burbuja</button>
+      <strong id="gameLauncherTitle">Juego</strong>
+      <button id="openGameNewTab" class="game-pop-btn" type="button" aria-label="Abrir aparte">↗</button>
+    </div>
+    <iframe id="gameFrame" title="Juego de Burbuja" allow="fullscreen; autoplay" referrerpolicy="same-origin"></iframe>
+  </div>
+
+  <div id="statusModal" class="modal-backdrop hidden">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading">
+        <div><small>MI ESTADO</small><h2>¿Qué estás haciendo?</h2></div>
+        <button id="closeStatusModal" class="close-btn" type="button">×</button>
+      </div>
+      <div id="statusOptions" class="status-options"></div>
+      <div class="custom-status">
+        <input id="customStatusInput" maxlength="60" placeholder="Escribe algo..." />
+        <button id="saveCustomStatus" class="small-btn" type="button">Usar</button>
+      </div>
+    </div>
+  </div>
+
+
+  <div id="editBubbleModal" class="modal-backdrop hidden">
+    <div class="sheet compact-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>MI BURBUJA</small><h2>Editar Burbuja</h2></div><button id="closeEditBubble" class="close-btn" type="button">×</button></div>
+      <input id="editBubbleId" type="hidden" />
+      <div class="stack">
+        <label>Nombre<input id="editBubbleName" maxlength="28" placeholder="Nombre de la Burbuja" /></label>
+        <label>Emoji<select id="editBubbleEmoji" class="emoji-select"><option>💜</option><option>🩷</option><option>🫧</option><option>🌙</option><option>✨</option><option>🎮</option><option>🌸</option><option>🖤</option></select></label>
+        <button id="saveBubbleEdit" class="primary-btn" type="button">Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="invitePartnerModal" class="modal-backdrop hidden">
+    <div class="sheet compact-sheet invite-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>INVITAR</small><h2>Que tu persona entre</h2></div><button id="closeInvitePartner" class="close-btn" type="button">×</button></div>
+      <div class="invite-heart">♡</div>
+      <p>Tu persona inicia sesión con <b>su propia cuenta</b>, abre <b>Mis Burbujas → Unirme con código</b> y escribe:</p>
+      <button id="inviteCodeButton" class="invite-code-big" type="button"><span id="inviteCodeText">------</span><small>Toca para copiar</small></button>
+      <p id="inviteBubbleLabel" class="tiny center">Nuestra Burbuja</p>
+      <button id="copyInviteCodeBtn" class="primary-btn" type="button">Copiar código</button>
+    </div>
+  </div>
+
+  <div id="messageActionsModal" class="modal-backdrop hidden">
+    <div class="sheet message-actions-sheet">
+      <div class="sheet-handle"></div>
+      <div id="reactionBar" class="reaction-bar"><button>❤️</button><button>😂</button><button>🥺</button><button>😘</button><button>😡</button><button>✨</button></div>
+      <div class="message-action-grid">
+        <button id="actionReply" type="button">↩️ <span>Responder</span></button>
+        <button id="actionCopy" type="button">📋 <span>Copiar</span></button>
+        <button id="actionEdit" type="button">✏️ <span>Editar</span></button>
+        <button id="actionSave" type="button">⭐ <span>Guardar</span></button>
+        <button id="actionPin" type="button">📌 <span>Fijar</span></button>
+        <button id="actionDeleteMe" type="button">🙈 <span>Eliminar para mí</span></button>
+        <button id="actionDeleteAll" class="danger-action" type="button">🗑️ <span>Eliminar para ambos</span></button>
+      </div>
+      <button id="closeMessageActions" class="secondary-btn" type="button">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="storyCreateModal" class="modal-backdrop hidden">
+    <div class="sheet story-create-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>24 HORAS</small><h2>Nuevo estado</h2></div><button id="closeStoryCreate" class="close-btn" type="button">×</button></div>
+      <input id="storyPhotoInput" type="file" accept="image/*" hidden />
+      <button id="storyPickPhoto" class="story-photo-pick" type="button">📷 <span>Elegir foto</span></button>
+      <div id="storyPhotoPreview" class="story-photo-preview hidden"></div>
+      <textarea id="storyTextInput" maxlength="220" rows="3" placeholder="¿Qué andas haciendo? (opcional)"></textarea>
+      <button id="publishStoryBtn" class="primary-btn" type="button">Publicar por 24 horas</button>
+      <p class="tiny center">Después de 24 horas dejará de aparecer y la app intentará eliminarlo de Firestore.</p>
+    </div>
+  </div>
+
+  <div id="storyViewerModal" class="story-viewer hidden">
+    <div class="story-viewer-shell">
+      <div id="storyProgress" class="story-progress"></div>
+      <div class="story-viewer-head"><div class="story-owner"><span id="storyViewerAvatar" class="avatar avatar-small">♡</span><div><strong id="storyViewerName">Estado</strong><small id="storyViewerTime"></small></div></div><div class="story-head-actions"><button id="storyViewerAddBtn" class="story-add-btn hidden" type="button" aria-label="Agregar otro estado">＋</button><button id="deleteStoryBtn" class="story-delete-btn hidden" type="button" aria-label="Eliminar mi estado">🗑️</button><button id="closeStoryViewer" type="button">×</button></div></div>
+      <button id="storyPrev" class="story-nav story-prev" type="button" aria-label="Anterior"></button><button id="storyNext" class="story-nav story-next" type="button" aria-label="Siguiente"></button>
+      <div id="storyMedia" class="story-media"></div>
+      <div id="storyCaption" class="story-caption"></div>
+      <div id="storySeen" class="story-seen"></div>
+      <div class="story-response"><div id="storyReactions" class="story-reactions"><button>❤️</button><button>🥺</button><button>😍</button></div><input id="storyReplyInput" maxlength="500" placeholder="Responder al estado…"><button id="storyReplyBtn" type="button">➤</button></div>
+    </div>
+  </div>
+
+  <div id="savedModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>⭐ PARA LOS DOS</small><h2>Guardados</h2></div><button data-close-v15="savedModal" class="close-btn" type="button">×</button></div>
+      <p class="tiny">Mensajes y fotos importantes. El mensaje fijado del chat sigue siendo independiente.</p>
+      <div id="savedMessagesList" class="v15-list"></div>
+    </div>
+  </div>
+
+  <div id="galleryModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>🖼️ NUESTRA BURBUJA</small><h2>Galería</h2></div><button data-close-v15="galleryModal" class="close-btn" type="button">×</button></div>
+      <p id="galleryHint" class="tiny">Fotos del chat y estados activos, sin crear copias.</p>
+      <div id="galleryGrid" class="v15-gallery-grid"></div>
+      <button id="galleryLoadMore" class="secondary-btn compact" type="button">Cargar más historial</button>
+    </div>
+  </div>
+
+  <div id="linksModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>🔗 COMPARTIDOS</small><h2>Enlaces</h2></div><button data-close-v15="linksModal" class="close-btn" type="button">×</button></div>
+      <div id="linksList" class="v15-list"></div>
+      <button id="linksLoadMore" class="secondary-btn compact" type="button">Cargar más historial</button>
+    </div>
+  </div>
+
+  <div id="noteModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>📝 PARA LOS DOS</small><h2>Nuestra nota</h2></div><button data-close-v15="noteModal" class="close-btn" type="button">×</button></div>
+      <textarea id="sharedNoteInput" class="shared-note-input" maxlength="5000" rows="12" placeholder="Películas pendientes, cosas por comprar, planes…"></textarea>
+      <button id="saveSharedNoteBtn" class="primary-btn" type="button">Guardar nota</button>
+      <p id="noteUpdatedLabel" class="tiny center">Se sincroniza entre los dos.</p>
+    </div>
+  </div>
+
+  <div id="datesModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>📅 FECHAS ESPECIALES</small><h2>Próximas fechas</h2></div><button data-close-v15="datesModal" class="close-btn" type="button">×</button></div>
+      <div class="special-date-form">
+        <select id="specialDateEmoji" aria-label="Emoji"><option>❤️</option><option>🎂</option><option>✨</option><option>🌸</option><option>🎁</option><option>🫧</option></select>
+        <input id="specialDateLabel" maxlength="40" placeholder="Ej. Cumpleaños de Alexita" />
+        <input id="specialDateValue" type="date" />
+        <button id="addSpecialDateBtn" class="primary-btn compact" type="button">Agregar</button>
+      </div>
+      <p class="tiny">Se repiten cada año. Puedes guardar hasta 12.</p>
+      <div id="specialDatesList" class="v15-list"></div>
+    </div>
+  </div>
+
+  <div id="storageModal" class="modal-backdrop hidden">
+    <div class="sheet v15-library-sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-heading"><div><small>🧹 TU CONTENIDO</small><h2>Almacenamiento</h2></div><button data-close-v15="storageModal" class="close-btn" type="button">×</button></div>
+      <div id="storageSummary" class="storage-summary">Calculando…</div>
+      <p class="tiny">Solo puedes quitar tus propias fotos/estados. En mensajes con texto se conserva el texto.</p>
+      <div id="storageList" class="v15-list storage-list"></div>
+      <button id="storageLoadMore" class="secondary-btn compact" type="button">Cargar más historial</button>
+    </div>
+  </div>
+
+  <div id="imagePreviewModal" class="modal-backdrop hidden">
+    <div class="image-preview-wrap">
+      <button id="closeImagePreview" class="close-btn floating-close" type="button">×</button>
+      <img id="imagePreview" alt="Vista previa" />
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  
+  <script>
+    (()=>{
+      const retry=()=>location.reload();
+      addEventListener('DOMContentLoaded',()=>{
+        const btn=document.getElementById('loadingRetryBtn');
+        if(btn)btn.addEventListener('click',retry);
+        setTimeout(()=>{
+          const loading=document.getElementById('loadingScreen');
+          if(!loading || loading.classList.contains('hidden'))return;
+          const t=document.getElementById('loadingText');
+          if(t)t.textContent='La conexión está tardando más de lo normal.';
+          if(btn)btn.classList.remove('hidden');
+        },8000);
+      },{once:true});
+    })();
+  </script>
+
+  <script type="module" src="./app.js?b=20260903-final-entry-fix"></script>
+</body>
+</html>
