@@ -1,0 +1,17 @@
+BURBUJA v11 · ESTABLE MOBILE
+
+REEMPLAZA SOLO LA CARPETA burbuja/ EN GITHUB.
+NO HAY QUE CAMBIAR FIRESTORE RULES PARA ESTA ACTUALIZACIÓN.
+
+Cambios principales:
+- Estructura móvil nueva: header / contenido / navegación son filas reales, no overlays.
+- Perfil, Nosotros y Juegos pueden desplazarse hasta el final sin quedar debajo de barras.
+- Chat con mensajes como única zona de scroll y composer siempre visible.
+- Mejor adaptación al teclado y visualViewport de iPhone.
+- Mis Burbujas rediseñado para teléfono.
+- Crear/Unirse se abren solo cuando se necesitan.
+- Editar nombre y emoji de una Burbuja existente.
+- Invitación clara cuando falta la segunda persona.
+- Mapachín se conserva y la categoría Monitos no aparece.
+- Se deja de registrar Service Worker dentro de /burbuja/ y se limpian caches viejas para evitar mezclas de versiones.
+- Archivos principales tienen nombres v11 para evitar que Safari use app.js/styles.css antiguos.
