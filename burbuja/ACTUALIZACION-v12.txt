@@ -1,0 +1,17 @@
+BURBUJA v12 FINAL MÓVIL
+
+REEMPLAZAR SOLO LA CARPETA burbuja/ EN GITHUB.
+NO CAMBIA FIREBASE NI firestore.rules.
+
+Correcciones principales:
+- navegación inferior más compacta y sin tapar contenido
+- scroll estable en Perfil/Nosotros/Juegos
+- panel Mapachín con scroll interno real hasta el último sticker
+- teclado iPhone: composer encima del teclado, nav oculta solo si un campo está enfocado
+- evita zoom accidental/autozzoom de Safari
+- Mis Burbujas abre inmediatamente y refresca después
+- separación entre Mis Burbujas y Cerrar sesión
+- borrar estados propios antes de las 24 horas
+- fondos del chat visibles y aplicados inmediatamente
+- arranque más rápido usando la Burbuja activa guardada
+- archivos app-v12.js y styles-v12.css para impedir caché de versiones anteriores

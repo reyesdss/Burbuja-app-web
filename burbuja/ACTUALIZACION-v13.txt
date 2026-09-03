@@ -1,0 +1,22 @@
+BURBUJA v13 — CHAT / ESTADOS / RACHA
+
+Cambios principales:
+- Chat: ya no se reposiciona solo al recibir snapshots.
+- Si estás leyendo arriba, conserva exactamente el mensaje visible.
+- Botón flotante de mensajes nuevos.
+- Separador NUEVOS.
+- Cargar mensajes anteriores conserva la posición.
+- No leídos por Burbuja en Mis Burbujas.
+- Hasta 30 estados activos por persona (mínimo solicitado: 10).
+- Eliminar cada estado individual sigue disponible.
+- Aviso interno al chat cuando alguien publica estados.
+- Aviso interno cuando alguien responde preguntas.
+- Racha cambia inmediatamente cuando ambos activan el nuevo día.
+- Se detecta cambio de fecha incluso si la app quedó abierta desde el día anterior.
+- Mensaje interno cuando se completa la nueva racha.
+- Sección “Mientras no estabas”.
+- Sin notificaciones push.
+
+PARA SUBIR:
+Borra únicamente la carpeta burbuja/ del repositorio y sube la carpeta burbuja/ incluida en este ZIP.
+No cambies Firebase ni firestore.rules para esta versión.
