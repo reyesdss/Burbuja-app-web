@@ -1,0 +1,49 @@
+BURBUJA — ENTREGA CONSOLIDADA
+Build: 20260903-clean
+
+ESTA ENTREGA ELIMINA LA CADENA DE ARCHIVOS:
+app-v13.js / app-v14.js / app-v15.js / app-v15-1.js / app-v15-2.js
+styles-v*.css
+
+AHORA BURBUJA USA ÚNICAMENTE:
+burbuja/app.js
+burbuja/styles.css
+
+QUÉ SUBIR A GITHUB
+1. En la RAÍZ del repositorio reemplaza:
+   - index.html
+   - sw.js
+
+2. Borra COMPLETA la carpeta:
+   - burbuja/
+
+3. Sube la nueva carpeta:
+   - burbuja/
+
+NO TOCAR
+- burbujacraft/
+- burbuja-hambrienta/
+- firestore.rules
+- Firebase Authentication / Firestore
+
+IMPORTANTE
+- root sw.js y burbuja/sw.js son únicamente limpiadores.
+- No interceptan peticiones.
+- No borran localStorage, borradores, preferencias ni sesión.
+- No eliminan los Service Workers de los dos juegos.
+- Solo eliminan cachés antiguas llamadas burbuja-root* y burbuja-shell*.
+
+ARCHIVOS PRINCIPALES
+/
+├── index.html
+├── sw.js
+└── burbuja/
+    ├── index.html
+    ├── app.js
+    ├── styles.css
+    ├── firebase-config.js
+    ├── manifest.json
+    ├── sw.js
+    ├── favicon.svg
+    ├── icons/
+    └── assets/
