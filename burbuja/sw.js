@@ -1,0 +1,1 @@
+self.addEventListener("install",()=>self.skipWaiting());self.addEventListener("activate",event=>{event.waitUntil((async()=>{try{const keys=await caches.keys();await Promise.all(keys.filter(k=>k.toLowerCase().includes("burbuja")).map(k=>caches.delete(k)));await self.registration.unregister()}catch{}})())});
