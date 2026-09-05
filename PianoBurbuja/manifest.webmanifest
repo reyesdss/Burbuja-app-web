@@ -1,0 +1,8 @@
+{
+  "name": "PianoBurbuja",
+  "short_name": "PianoBurbuja",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#09080d",
+  "theme_color": "#09080d"
+}

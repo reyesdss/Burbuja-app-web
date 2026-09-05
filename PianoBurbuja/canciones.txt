@@ -1,0 +1,37 @@
+PianoBurbuja — 19 canciones
+
+Mete TODOS los MP3 dentro de la carpeta:
+canciones/
+
+Usa exactamente estos nombres:
+
+LATIN MAFIA
+julieta.mp3
+no-digas-nada.mp3
+hecho-para-ti.mp3
+flores.mp3
+mala-suerte.mp3
+continuo-atardecer.mp3
+te-estoy-correteando.mp3
+
+OTROS
+qhp-pinata.mp3
+vitamina.mp3
+views.mp3
+moonlight-plus.mp3
+after-house.mp3
+instante.mp3
+encontrarte.mp3
+superstar.mp3
+race.mp3
+payday.mp3
+noche-de-sateo.mp3
+tolkin-yit.mp3
+
+IMPORTANTE
+- vivo-si-me-exiges.mp3 fue eliminado.
+- El juego usa como máximo los primeros 2:00 de cada canción.
+- MOONLIGHT puede durar 1:22; el nivel termina naturalmente al acabar el MP3.
+- Canciones de casi 2 minutos: 0:00–1:00 = corazones y 1:00–2:00 = estrellas.
+- Si una canción dura bastante menos, se divide en dos mitades.
+- El orden de desbloqueo se mezcla la primera vez y después queda guardado.

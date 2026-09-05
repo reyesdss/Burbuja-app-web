@@ -1,0 +1,31 @@
+PIANOBURBUJA — LISTO PARA GITHUB PAGES
+
+1. Mete los 19 MP3 dentro de la carpeta canciones/ usando exactamente los nombres de canciones.txt.
+2. Sube TODO el contenido de PianoBurbuja_FINAL a tu repositorio/carpeta de GitHub Pages.
+3. Abre index.html desde GitHub Pages.
+
+JUEGO
+- 19 canciones.
+- Empieza con una desbloqueada.
+- El orden se mezcla una sola vez y queda guardado en el navegador.
+- Cada nivel usa hasta 2:00 continuos de audio; no repite la primera parte.
+- Fase 1: corazones.
+- Fase 2: estrellas, fichas algo más rápidas y algunos dobles.
+- MOONLIGHT termina naturalmente cuando acaba su MP3 (~1:22).
+
+PUNTOS BURBUJA — máximo 20 por canción
+- completar: 4
+- corazones: hasta 3
+- estrellas: hasta 3
+- precisión 90%+: +3
+- precisión 97%+: +2 extra
+- combo: hasta +5
+- máximo total de PianoBurbuja: 380 puntos
+
+ANTI-FARMEO
+Solo cuenta el mejor resultado de cada canción. Si antes tenías 14 y luego haces 17, el juego genera únicamente +3 puntos nuevos.
+
+INTEGRACIÓN CON BURBUJA
+La versión funciona sola y guarda el progreso en localStorage.
+Al mejorar una canción emite el evento: burbuja:game-points
+También llamará window.BurbujaGamePoints.award(detail) si esa función existe cuando se integre a la app principal.
