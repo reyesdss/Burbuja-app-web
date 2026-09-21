@@ -2,7 +2,7 @@
   "name": "Burbuja",
   "short_name": "Burbuja",
   "description": "Un espacio privado para tus Burbujas de dos.",
-  "start_url": "./?b=20260903-clean",
+  "start_url": "./?b=20260921-pwa-reset",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0d0a12",
